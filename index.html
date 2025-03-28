@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-TW">
   <head>
     <meta charset="utf-8" />
@@ -217,7 +217,7 @@
                 sliderEl: null, // 待會會是 input[type="range"]
                 labelEl: null, // 顯示機率數字
               };
-            },
+            }
           );
         }
 
@@ -228,7 +228,10 @@
             .then((data) => {
               this.cardData = data;
             })
-            .catch((err) => console.error("載入卡片資料失敗：", err));
+            .catch((err) => {
+              console.error("載入卡片資料失敗：", err);
+              alert("載入卡片資料失敗，請確認檔案路徑和格式。");
+            });
 
           // 2. 產生稀有度滑桿
           this.createSliders();
@@ -302,13 +305,23 @@
 
         // 抽 1 張卡（允許重複）
         drawOne() {
+          // 檢查機率總和是否為 0
+          const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
+          if (totalProb <= 0) {
+            alert("機率總和為 0，請先調整滑桿再抽卡！");
+            return;
+          }
+
           const rarityName = this.getRarityByProb();
-          if (!rarityName) return;
+          if (!rarityName) {
+            // 理論上不會跑到這，如果 totalProb>0 就一定抽得到
+            return;
+          }
 
           // 從對應稀有度隨機抽 1 張
           const cardPool = this.cardData[rarityName] || [];
           if (cardPool.length === 0) {
-            console.warn(`「${rarityName}」卡池沒有卡或找不到`);
+            alert(`「${rarityName}」卡池沒有卡或找不到，抽卡失敗！`);
             return;
           }
 
@@ -320,36 +333,56 @@
 
         // 抽 10 張卡（同一次 10 抽內「不重複」）
         drawTen() {
-          // 先做一份暫時的深拷貝，避免改到原本的全局 cardData
+          // 檢查機率總和是否為 0
+          const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
+          if (totalProb <= 0) {
+            alert("機率總和為 0，請先調整滑桿再抽卡！");
+            return;
+          }
+
+          // 做一份深拷貝，避免改到原本 cardData
           const tempData = JSON.parse(JSON.stringify(this.cardData));
+
+          // 旗標：這次抽卡過程中，若某稀有度沒卡，只跳一次警告
+          let emptyPoolAlertShown = false;
 
           for (let i = 0; i < 10; i++) {
             setTimeout(() => {
               const rarityName = this.getRarityByProb();
-              if (!rarityName) return;
-
-              // 從暫時資料取對應稀有度
-              const cardPool = tempData[rarityName];
-              if (!cardPool || cardPool.length === 0) {
-                console.warn(`「${rarityName}」卡池已經沒有可抽的卡了`);
+              if (!rarityName) {
+                // 正常來說不會到這裡，因為 totalProb>0
                 return;
               }
 
-              // 隨機取一張，並從 tempData 中移除，確保不會重複
+              const cardPool = tempData[rarityName];
+              // 該稀有度暫存卡池沒卡
+              if (!cardPool || cardPool.length === 0) {
+                if (!emptyPoolAlertShown) {
+                  emptyPoolAlertShown = true;
+                  alert(
+                    `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${
+                      i + 1
+                    } 張。`
+                  );
+                }
+                return;
+              }
+
+              // 隨機取一張，並從 tempData 中移除
               const randomIndex = Math.floor(Math.random() * cardPool.length);
               const cardImageUrl = cardPool.splice(randomIndex, 1)[0];
 
-              // 建立卡片顯示
+              // 建立卡片
               this.createCard(rarityName, cardImageUrl);
-            }, i * 120);
+            }, i * 120); // 每張延遲 120ms，保留翻牌動畫感
           }
         }
 
         // 依照機率決定抽到哪個稀有度
         getRarityByProb() {
           const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
+          // totalProb <= 0 在呼叫前已檢查，不在此 alert
           if (totalProb <= 0) {
-            console.warn("所有稀有度機率總和為 0，請先調整滑桿");
             return null;
           }
 
@@ -361,10 +394,11 @@
               return r.name;
             }
           }
-          return null; // 理論上不會到這裡
+          // 理論上不會到這裡
+          return null;
         }
 
-        // 生成卡片並顯示 (不含機率判斷)
+        // 生成卡片並顯示
         createCard(rarityName, cardImageUrl) {
           const card = document.createElement("div");
           card.classList.add("card");
@@ -380,7 +414,7 @@
           frontImg.alt = "Card Back";
           cardFront.appendChild(frontImg);
 
-          // 背面 (寶可夢卡圖 + 稀有度)
+          // 背面 (卡圖 + 稀有度文字)
           const cardBack = document.createElement("div");
           cardBack.classList.add("card-face", "card-back");
           const backImg = document.createElement("img");
