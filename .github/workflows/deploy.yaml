@@ -1,12 +1,9 @@
 name: Deploy to Cloudflare Pages
 
 on:
+  workflow_call: {}
   push:
-    branches:
-      - main
-
-permissions:
-  contents: read
+    branches: [main]
 
 jobs:
   deploy:

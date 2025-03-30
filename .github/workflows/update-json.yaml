@@ -1,9 +1,8 @@
-name: Daily JSON Update
+name: Auto Update JSON and Trigger Deploy
 
 on:
   schedule:
     - cron: "0 0 * * *"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -34,3 +33,7 @@ jobs:
           git add public/pokemon_cards.json
           git commit -m "(chore): auto-update JSON" || echo "Nothing to commit"
           git push
+
+  trigger-deploy:
+    needs: update-json
+    uses: ./.github/workflows/deploy.yml
