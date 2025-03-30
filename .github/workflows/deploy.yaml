@@ -1,0 +1,41 @@
+name: Daily Pokémon Cards Update
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+env:
+  UV_SYSTEM_PYTHON: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv pip install -r requirements.txt
+
+      - name: Run main.py
+        run: python main.py
+
+      - name: Commit generated pokemon_cards.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain pokemon_cards.json)" ]; then
+            git add pokemon_cards.json
+            git commit -m "chore: update pokemon_cards.json [auto]"
+            git push
+          else
+            echo "No changes in pokemon_cards.json"
+          fi
