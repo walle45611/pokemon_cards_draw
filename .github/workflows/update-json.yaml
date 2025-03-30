@@ -31,6 +31,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pokemon_cards.json
+          git add public/pokemon_cards.json
           git commit -m "(chore): auto-update JSON" || echo "Nothing to commit"
           git push

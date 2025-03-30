@@ -1,15 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-TW">
   <head>
     <meta charset="utf-8" />
-    <title>抽卡系統 - 多稀有度版本</title>
+    <title>抽卡練習所</title>
   </head>
   <body>
-    <!-- Web Component -->
     <draw-card-app></draw-card-app>
 
     <script type="module">
-      // 18 種稀有度
       const RARITY_FULL_MAP = {
         1: "C",
         2: "U",
@@ -34,7 +32,6 @@
       class DrawCardApp extends HTMLElement {
         constructor() {
           super();
-
           const template = document.createElement("template");
           template.innerHTML = `
           <style>
@@ -50,12 +47,23 @@
               text-align: center;
             }
             h1 {
-              margin: 20px 0;
+              margin: 20px 0 10px;
               font-size: 32px;
               color: #4b2e06;
             }
-
-            /* 機率滑桿區 */
+            .intro-text {
+              font-size: 16px;
+              color: #555;
+              margin-bottom: 30px;
+              line-height: 1.6;
+            }
+            .intro-text a {
+              color: #007acc;
+              text-decoration: none;
+            }
+            .intro-text a:hover {
+              text-decoration: underline;
+            }
             .slider-container {
               display: flex;
               flex-wrap: wrap;
@@ -75,8 +83,6 @@
             input[type="range"] {
               width: 160px;
             }
-
-            /* 按鈕區 */
             .btn-container {
               margin-bottom: 20px;
             }
@@ -95,15 +101,11 @@
               transform: scale(1.05);
               box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
             }
-
-            /* 卡片容器 */
             #card-container {
               display: flex;
               flex-wrap: wrap;
               justify-content: center;
             }
-
-            /* 卡片設定 */
             .card {
               width: 200px;
               aspect-ratio: 63 / 88;
@@ -123,14 +125,12 @@
             .card.flipped .card-inner {
               transform: rotateY(180deg);
             }
-
             .card-face {
               position: absolute;
               top: 0; left: 0;
               width: 100%;
               height: 100%;
               backface-visibility: hidden;
-
               display: flex;
               justify-content: center;
               align-items: center;
@@ -138,8 +138,6 @@
               padding: 0;
               overflow: hidden;
             }
-
-            /* 卡片正面：顯示卡背圖 */
             .card-front {
               background: none;
             }
@@ -150,8 +148,6 @@
               object-position: center;
               display: block;
             }
-
-            /* 卡片背面：翻轉 180 度 */
             .card-back {
               transform: rotateY(180deg);
               background: #fff;
@@ -163,8 +159,6 @@
               height: 100%;
               object-fit: contain;
             }
-
-            /* 稀有度文字顯示 */
             .rarity-text {
               position: absolute;
               bottom: 5px;
@@ -179,17 +173,17 @@
           </style>
 
           <div class="app">
-            <h1>抽卡系統 - 多稀有度 (不重複 10 連抽)</h1>
-            <!-- 機率滑桿區 (動態產生) -->
+            <h1>抽卡練習所</h1>
+            <p class="intro-text">
+              抽卡練習所：給抽不到 SSR 的人一點慰藉（笑）<br />
+              部落格連結：
+              <a href="https://blog.walle4561.com/" target="_blank">https://blog.walle4561.com/</a>
+            </p>
             <div id="sliderContainer" class="slider-container"></div>
-
-            <!-- 按鈕區 -->
             <div class="btn-container">
               <button id="drawOneBtn">抽 1 次</button>
               <button id="drawTenBtn">抽 10 次 (不重複)</button>
             </div>
-
-            <!-- 卡片顯示區 -->
             <div id="card-container"></div>
           </div>
           `;
@@ -197,32 +191,25 @@
           this.attachShadow({ mode: "open" });
           this.shadowRoot.appendChild(template.content.cloneNode(true));
 
-          // 取得關鍵 DOM
           this.sliderContainer =
             this.shadowRoot.querySelector("#sliderContainer");
           this.cardContainer = this.shadowRoot.querySelector("#card-container");
           this.drawOneBtn = this.shadowRoot.querySelector("#drawOneBtn");
           this.drawTenBtn = this.shadowRoot.querySelector("#drawTenBtn");
 
-          // 儲存卡片資料 (fetch 後放這裡)
           this.cardData = {};
-
-          // 產生稀有度列表 (附帶機率欄位)
           this.rarityList = Object.entries(RARITY_FULL_MAP).map(
-            ([key, rarityName]) => {
-              return {
-                id: parseInt(key),
-                name: rarityName,
-                prob: 0, // 初始機率
-                sliderEl: null, // 待會會是 input[type="range"]
-                labelEl: null, // 顯示機率數字
-              };
-            }
+            ([key, rarityName]) => ({
+              id: parseInt(key),
+              name: rarityName,
+              prob: 0,
+              sliderEl: null,
+              labelEl: null,
+            }),
           );
         }
 
         connectedCallback() {
-          // 1. 讀取 pokemon_cards.json
           fetch("./pokemon_cards.json")
             .then((res) => res.json())
             .then((data) => {
@@ -233,28 +220,22 @@
               alert("載入卡片資料失敗，請確認檔案路徑和格式。");
             });
 
-          // 2. 產生稀有度滑桿
           this.createSliders();
-
-          // 3. 綁定抽卡按鈕事件
           this.drawOneBtn.addEventListener("click", () => {
             this.clearCards();
             this.drawOne();
           });
-
           this.drawTenBtn.addEventListener("click", () => {
             this.clearCards();
             this.drawTen();
           });
         }
 
-        // 產生每個稀有度的滑桿
         createSliders() {
           this.rarityList.forEach((rarityObj) => {
             const group = document.createElement("div");
             group.classList.add("slider-group");
 
-            // Label: 顯示稀有度與當前機率
             const label = document.createElement("label");
             label.textContent = `${rarityObj.name}: `;
             const span = document.createElement("span");
@@ -262,7 +243,6 @@
             label.appendChild(span);
             label.appendChild(document.createTextNode(" %"));
 
-            // range input
             const slider = document.createElement("input");
             slider.type = "range";
             slider.min = "0";
@@ -272,133 +252,91 @@
               let newValue = parseInt(e.target.value, 10);
               rarityObj.prob = newValue;
               span.textContent = newValue;
-              // 若加總超過 100，要壓回
               this.handleSliderSum(rarityObj);
             });
 
             rarityObj.sliderEl = slider;
             rarityObj.labelEl = span;
-
             group.appendChild(label);
             group.appendChild(slider);
             this.sliderContainer.appendChild(group);
           });
         }
 
-        // 若加總 > 100，就把最新調整的滑桿壓回
         handleSliderSum(changedObj) {
           let total = this.rarityList.reduce((sum, item) => sum + item.prob, 0);
           if (total > 100) {
             let diff = total - 100;
             changedObj.prob -= diff;
             if (changedObj.prob < 0) changedObj.prob = 0;
-            // 更新 slider
             changedObj.sliderEl.value = changedObj.prob;
             changedObj.labelEl.textContent = changedObj.prob;
           }
         }
 
-        // 抽卡前先清空畫面
         clearCards() {
           this.cardContainer.innerHTML = "";
         }
 
-        // 抽 1 張卡（允許重複）
         drawOne() {
-          // 檢查機率總和是否為 0
           const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
           if (totalProb <= 0) {
             alert("機率總和為 0，請先調整滑桿再抽卡！");
             return;
           }
-
           const rarityName = this.getRarityByProb();
-          if (!rarityName) {
-            // 理論上不會跑到這，如果 totalProb>0 就一定抽得到
-            return;
-          }
-
-          // 從對應稀有度隨機抽 1 張
+          if (!rarityName) return;
           const cardPool = this.cardData[rarityName] || [];
           if (cardPool.length === 0) {
             alert(`「${rarityName}」卡池沒有卡或找不到，抽卡失敗！`);
             return;
           }
-
           const randomIndex = Math.floor(Math.random() * cardPool.length);
           const cardImageUrl = cardPool[randomIndex];
-
           this.createCard(rarityName, cardImageUrl);
         }
 
-        // 抽 10 張卡（同一次 10 抽內「不重複」）
         drawTen() {
-          // 檢查機率總和是否為 0
           const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
           if (totalProb <= 0) {
             alert("機率總和為 0，請先調整滑桿再抽卡！");
             return;
           }
-
-          // 做一份深拷貝，避免改到原本 cardData
           const tempData = JSON.parse(JSON.stringify(this.cardData));
-
-          // 旗標：這次抽卡過程中，若某稀有度沒卡，只跳一次警告
           let emptyPoolAlertShown = false;
-
           for (let i = 0; i < 10; i++) {
             setTimeout(() => {
               const rarityName = this.getRarityByProb();
-              if (!rarityName) {
-                // 正常來說不會到這裡，因為 totalProb>0
-                return;
-              }
-
+              if (!rarityName) return;
               const cardPool = tempData[rarityName];
-              // 該稀有度暫存卡池沒卡
               if (!cardPool || cardPool.length === 0) {
                 if (!emptyPoolAlertShown) {
                   emptyPoolAlertShown = true;
                   alert(
-                    `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${
-                      i + 1
-                    } 張。`
+                    `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${i + 1} 張。`,
                   );
                 }
                 return;
               }
-
-              // 隨機取一張，並從 tempData 中移除
               const randomIndex = Math.floor(Math.random() * cardPool.length);
               const cardImageUrl = cardPool.splice(randomIndex, 1)[0];
-
-              // 建立卡片
               this.createCard(rarityName, cardImageUrl);
-            }, i * 120); // 每張延遲 120ms，保留翻牌動畫感
+            }, i * 120);
           }
         }
 
-        // 依照機率決定抽到哪個稀有度
         getRarityByProb() {
           const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
-          // totalProb <= 0 在呼叫前已檢查，不在此 alert
-          if (totalProb <= 0) {
-            return null;
-          }
-
+          if (totalProb <= 0) return null;
           const rand = Math.floor(Math.random() * totalProb) + 1;
           let cumulative = 0;
           for (const r of this.rarityList) {
             cumulative += r.prob;
-            if (rand <= cumulative) {
-              return r.name;
-            }
+            if (rand <= cumulative) return r.name;
           }
-          // 理論上不會到這裡
           return null;
         }
 
-        // 生成卡片並顯示
         createCard(rarityName, cardImageUrl) {
           const card = document.createElement("div");
           card.classList.add("card");
@@ -406,7 +344,6 @@
           const cardInner = document.createElement("div");
           cardInner.classList.add("card-inner");
 
-          // 正面 (卡背)
           const cardFront = document.createElement("div");
           cardFront.classList.add("card-face", "card-front");
           const frontImg = document.createElement("img");
@@ -414,7 +351,6 @@
           frontImg.alt = "Card Back";
           cardFront.appendChild(frontImg);
 
-          // 背面 (卡圖 + 稀有度文字)
           const cardBack = document.createElement("div");
           cardBack.classList.add("card-face", "card-back");
           const backImg = document.createElement("img");
@@ -428,17 +364,14 @@
           cardBack.appendChild(backImg);
           cardBack.appendChild(rarityText);
 
-          // 組合
           cardInner.appendChild(cardFront);
           cardInner.appendChild(cardBack);
           card.appendChild(cardInner);
 
-          // 點擊翻轉
           card.addEventListener("click", () => {
             card.classList.toggle("flipped");
           });
 
-          // 放到畫面
           this.cardContainer.appendChild(card);
         }
       }
