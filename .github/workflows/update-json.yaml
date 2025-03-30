@@ -15,18 +15,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-
       - name: Sync dependencies and run main.py
         run: |
           uv sync
           source .venv/bin/activate
           python main.py
-
       - name: Commit and push updated JSON
         run: |
           git config user.name "github-actions[bot]"
