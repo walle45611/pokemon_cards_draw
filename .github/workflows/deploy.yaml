@@ -1,39 +1,25 @@
-name: Daily Pokémon Cards Update
+name: Deploy to Cloudflare Pages
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
         with:
-          enable-cache: true
-
-      - name: Sync dependencies using uv
-        run: uv sync
-
-      - name: Activate virtualenv and run script
-        run: |
-          source .venv/bin/activate
-          python main.py
-
-      - name: Commit generated pokemon_cards.json
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add pokemon_cards.json
-          git commit -m "chore: update pokemon_cards.json [auto]" || echo "Nothing to commit"
-          git push
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: pokemon-cards
+          directory: ./public

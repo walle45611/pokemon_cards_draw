@@ -99,7 +99,7 @@ for rarity, urls in all_cards.items():
         print(f"- {u}")
 
 # 輸出 JSON
-with open("pokemon_cards.json", "w", encoding="utf-8") as f:
+with open("public/pokemon_cards.json", "w", encoding="utf-8") as f:
     json.dump(all_cards, f, indent=2, ensure_ascii=False)
 
 print("\n✅ 已輸出為 pokemon_cards.json")
