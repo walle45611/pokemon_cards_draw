@@ -37,4 +37,4 @@ jobs:
 
   trigger-deploy:
     needs: update-json
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/deploy.yaml
