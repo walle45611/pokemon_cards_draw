@@ -183,6 +183,7 @@
             <div class="btn-container">
               <button id="drawOneBtn">抽 1 次</button>
               <button id="drawTenBtn">抽 10 次 (不重複)</button>
+              <button id="randomProbBtn">隨機機率</button>
             </div>
             <div id="card-container"></div>
           </div>
@@ -196,6 +197,7 @@
           this.cardContainer = this.shadowRoot.querySelector("#card-container");
           this.drawOneBtn = this.shadowRoot.querySelector("#drawOneBtn");
           this.drawTenBtn = this.shadowRoot.querySelector("#drawTenBtn");
+          this.randomProbBtn = this.shadowRoot.querySelector("#randomProbBtn");
 
           this.cardData = {};
           this.rarityList = Object.entries(RARITY_FULL_MAP).map(
@@ -228,6 +230,9 @@
           this.drawTenBtn.addEventListener("click", () => {
             this.clearCards();
             this.drawTen();
+          });
+          this.randomProbBtn.addEventListener("click", () => {
+            this.randomizeProbabilities();
           });
         }
 
@@ -274,6 +279,41 @@
           }
         }
 
+        // 隨機產生機率前先篩選卡池中至少有 10 張的稀有度
+        randomizeProbabilities() {
+          // 過濾出卡池數量 >= 10 的稀有度
+          const eligible = this.rarityList.filter((r) => {
+            return this.cardData[r.name] && this.cardData[r.name].length >= 10;
+          });
+          if (eligible.length === 0) {
+            alert("沒有任何卡池有足夠的卡可以抽 10 張！");
+            return;
+          }
+          // 使用 eligible 的數量來切分 0~100
+          const m = eligible.length;
+          let cuts = [];
+          for (let i = 0; i < m - 1; i++) {
+            cuts.push(Math.floor(Math.random() * 101));
+          }
+          cuts.push(0);
+          cuts.push(100);
+          cuts.sort((a, b) => a - b);
+          // 針對所有稀有度設定機率：符合條件者依照隨機分配，其他則歸 0
+          this.rarityList.forEach((r) => {
+            if (this.cardData[r.name] && this.cardData[r.name].length >= 10) {
+              const index = eligible.indexOf(r);
+              let prob = cuts[index + 1] - cuts[index];
+              r.prob = prob;
+              r.sliderEl.value = prob;
+              r.labelEl.textContent = prob;
+            } else {
+              r.prob = 0;
+              r.sliderEl.value = 0;
+              r.labelEl.textContent = 0;
+            }
+          });
+        }
+
         clearCards() {
           this.cardContainer.innerHTML = "";
         }
@@ -302,6 +342,7 @@
             alert("機率總和為 0，請先調整滑桿再抽卡！");
             return;
           }
+          // 建立暫存資料，避免直接更動原始資料
           const tempData = JSON.parse(JSON.stringify(this.cardData));
           let emptyPoolAlertShown = false;
           for (let i = 0; i < 10; i++) {
