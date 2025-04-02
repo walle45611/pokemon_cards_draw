@@ -103,6 +103,7 @@ class DrawCardApp extends HTMLElement {
         .card.flipped:hover {
           transform: translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
           box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5);
+          /* 此處 hover 的 z-index 用於非觸控設備 */
           z-index: 10000;
         }
         .card-inner {
@@ -308,9 +309,7 @@ class DrawCardApp extends HTMLElement {
           if (!emptyPoolAlertShown) {
             emptyPoolAlertShown = true;
             alert(
-              `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${
-                i + 1
-              } 張。`
+              `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${i + 1} 張。`
             );
           }
           return;
@@ -368,6 +367,11 @@ class DrawCardApp extends HTMLElement {
 
     card.addEventListener("click", () => {
       card.classList.toggle("flipped");
+      if (card.classList.contains("flipped")) {
+        card.style.zIndex = 10000;
+      } else {
+        card.style.zIndex = "";
+      }
     });
     this.cardContainer.appendChild(card);
   }
