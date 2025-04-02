@@ -80,13 +80,26 @@ class DrawCardApp extends HTMLElement {
           justify-content: center;
         }
         .card {
-          width: 200px;
-          aspect-ratio: 63 / 88;
-          position: relative;
-          perspective: 800px;
+          width: 184px;
+          height: 256px;
           margin: 10px;
           cursor: pointer;
-          transition: all 0.3s;
+          list-style: none;
+          padding: 0;
+          background: transparent;
+          border-radius: 10px;
+          box-sizing: border-box;
+          transform-style: preserve-3d;
+          perspective: 1000px;
+          position: relative;
+          overflow: hidden;
+          transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+        /* 浮動效果：只有在翻開後且 hover 時觸發 */
+        .card.flipped:hover {
+          transform: translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
+          box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5);
+          z-index: 999;
         }
         .card-inner {
           width: 100%;
@@ -96,18 +109,17 @@ class DrawCardApp extends HTMLElement {
           left: 0;
           transition: transform 0.6s;
           transform-style: preserve-3d;
+          will-change: transform;
         }
         .card.flipped .card-inner {
           transform: rotateY(180deg);
         }
         .card-face {
           position: absolute;
-          top: 0;
-          left: 0;
           width: 100%;
           height: 100%;
           backface-visibility: hidden;
-          overflow: hidden;
+          -webkit-backface-visibility: hidden;
           display: flex;
           justify-content: center;
           align-items: center;
@@ -117,22 +129,37 @@ class DrawCardApp extends HTMLElement {
           height: 100%;
           object-fit: contain;
         }
+        /* 卡背背景 */
         .card-back {
-          background: #fff;
+          background: linear-gradient(to right bottom, #eee 8%, #ddd 18%, #eee 33%);
         }
         .card-front {
           transform: rotateY(180deg);
+          background: #fff;
         }
         .rarity-text {
           position: absolute;
           bottom: 5px;
           left: 50%;
           transform: translateX(-50%);
-          background-color: rgba(255,255,255,0.7);
+          background-color: rgba(255,255,255,0.8);
           padding: 3px 8px;
           border-radius: 6px;
           font-weight: bold;
           font-size: 16px;
+        }
+        /* 閃光動畫 keyframes */
+        @keyframes flash {
+          0%, 100% {
+            filter: brightness(1);
+          }
+          50% {
+            filter: brightness(1.5);
+          }
+        }
+        /* 當卡片為 SSR 且翻開後啟用閃光動畫 */
+        .card.flipped.flash {
+          animation: flash 1s infinite;
         }
       </style>
       <div class="app">
@@ -277,9 +304,7 @@ class DrawCardApp extends HTMLElement {
           if (!emptyPoolAlertShown) {
             emptyPoolAlertShown = true;
             alert(
-              `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${
-                i + 1
-              } 張。`
+              `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${i + 1} 張。`
             );
           }
           return;
@@ -306,27 +331,36 @@ class DrawCardApp extends HTMLElement {
   createCard(rarityName, cardImageUrl) {
     const card = document.createElement("div");
     card.classList.add("card");
+    // 若抽到 SSR 卡，加入 flash class，翻開後會觸發閃光動畫
+    if (rarityName === "SSR") {
+      card.classList.add("flash");
+    }
     const cardInner = document.createElement("div");
     cardInner.classList.add("card-inner");
+
     const cardBack = document.createElement("div");
     cardBack.classList.add("card-face", "card-back");
     const backImg = document.createElement("img");
     backImg.src = "./card_back_img.png";
     backImg.alt = "Card Back";
     cardBack.appendChild(backImg);
+
     const cardFront = document.createElement("div");
     cardFront.classList.add("card-face", "card-front");
     const frontImg = document.createElement("img");
     frontImg.src = cardImageUrl;
     frontImg.alt = `${rarityName} Card`;
     cardFront.appendChild(frontImg);
+
     const rarityText = document.createElement("div");
     rarityText.classList.add("rarity-text");
     rarityText.textContent = rarityName;
     cardFront.appendChild(rarityText);
+
     cardInner.appendChild(cardBack);
     cardInner.appendChild(cardFront);
     card.appendChild(cardInner);
+
     card.addEventListener("click", () => {
       card.classList.toggle("flipped");
     });
