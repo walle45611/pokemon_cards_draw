@@ -25,6 +25,7 @@ class DrawCardApp extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this.topZIndex = 1000;
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -99,12 +100,10 @@ class DrawCardApp extends HTMLElement {
           overflow: hidden;
           transition: transform 0.4s ease, box-shadow 0.4s ease;
         }
-        /* 浮動效果：只有在翻開後且 hover 時觸發 */
+        /* 桌面環境下的 hover 浮動效果 */
         .card.flipped:hover {
           transform: translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
-          box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5);
-          /* 此處 hover 的 z-index 用於非觸控設備 */
-          z-index: 10000;
+          box-shadow: 0 25px 40px rgba(0,0,0,0.5);
         }
         .card-inner {
           width: 100%;
@@ -134,7 +133,6 @@ class DrawCardApp extends HTMLElement {
           height: 100%;
           object-fit: contain;
         }
-        /* 卡背背景 */
         .card-back {
           background: linear-gradient(to right bottom, #eee 8%, #ddd 18%, #eee 33%);
         }
@@ -153,7 +151,6 @@ class DrawCardApp extends HTMLElement {
           font-weight: bold;
           font-size: 16px;
         }
-        /* 閃光動畫 keyframes */
         @keyframes flash {
           0%, 100% {
             filter: brightness(1);
@@ -162,7 +159,6 @@ class DrawCardApp extends HTMLElement {
             filter: brightness(1.5);
           }
         }
-        /* 當卡片為 SSR 且翻開後啟用閃光動畫 */
         .card.flipped.flash {
           animation: flash 1s infinite;
         }
@@ -170,7 +166,7 @@ class DrawCardApp extends HTMLElement {
       <div class="app">
         <h1>抽卡練習所</h1>
         <p class="intro-text">
-          抽卡練習所：給抽不到 SSR 的人一點慰藉（笑）<br />
+          抽卡練習所：給抽不到 SSR 的人一點慰藉（笑）<br/>
           部落格連結：
           <a href="https://blog.walle4561.com/" target="_blank">https://blog.walle4561.com/</a>
         </p>
@@ -230,8 +226,7 @@ class DrawCardApp extends HTMLElement {
     });
 
     this.raritySliders.addEventListener("rarity-updated", (e) => {
-      const updated = e.detail;
-      this.rarityList = updated;
+      this.rarityList = e.detail;
     });
   }
 
@@ -240,13 +235,13 @@ class DrawCardApp extends HTMLElement {
   }
 
   clearProbabilities() {
-    this.rarityList.forEach((r) => {
+    this.rarityList.forEach(r => {
       r.prob = 0;
     });
   }
 
   randomizeProbabilities() {
-    const eligible = this.rarityList.filter((r) => {
+    const eligible = this.rarityList.filter(r => {
       return this.cardData[r.name] && this.cardData[r.name].length >= 10;
     });
     if (eligible.length === 0) {
@@ -261,16 +256,26 @@ class DrawCardApp extends HTMLElement {
     cuts.push(0);
     cuts.push(100);
     cuts.sort((a, b) => a - b);
-
-    this.rarityList.forEach((r) => {
+    this.rarityList.forEach(r => {
       if (this.cardData[r.name] && this.cardData[r.name].length >= 10) {
         const index = eligible.indexOf(r);
-        let prob = cuts[index + 1] - cuts[index];
-        r.prob = prob;
+        r.prob = cuts[index + 1] - cuts[index];
       } else {
         r.prob = 0;
       }
     });
+  }
+
+  getRarityByProb() {
+    const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
+    if (totalProb <= 0) return null;
+    const rand = Math.floor(Math.random() * totalProb) + 1;
+    let cumulative = 0;
+    for (const r of this.rarityList) {
+      cumulative += r.prob;
+      if (rand <= cumulative) return r.name;
+    }
+    return null;
   }
 
   drawOne() {
@@ -299,7 +304,6 @@ class DrawCardApp extends HTMLElement {
     }
     const tempData = JSON.parse(JSON.stringify(this.cardData));
     let emptyPoolAlertShown = false;
-
     for (let i = 0; i < 10; i++) {
       setTimeout(() => {
         const rarityName = this.getRarityByProb();
@@ -308,9 +312,7 @@ class DrawCardApp extends HTMLElement {
         if (!cardPool || cardPool.length === 0) {
           if (!emptyPoolAlertShown) {
             emptyPoolAlertShown = true;
-            alert(
-              `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${i + 1} 張。`
-            );
+            alert(`「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${i + 1} 張。`);
           }
           return;
         }
@@ -321,18 +323,6 @@ class DrawCardApp extends HTMLElement {
     }
   }
 
-  getRarityByProb() {
-    const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
-    if (totalProb <= 0) return null;
-    const rand = Math.floor(Math.random() * totalProb) + 1;
-    let cumulative = 0;
-    for (const r of this.rarityList) {
-      cumulative += r.prob;
-      if (rand <= cumulative) return r.name;
-    }
-    return null;
-  }
-
   createCard(rarityName, cardImageUrl) {
     const card = document.createElement("div");
     card.classList.add("card");
@@ -341,38 +331,40 @@ class DrawCardApp extends HTMLElement {
     }
     const cardInner = document.createElement("div");
     cardInner.classList.add("card-inner");
-
+    
     const cardBack = document.createElement("div");
     cardBack.classList.add("card-face", "card-back");
     const backImg = document.createElement("img");
     backImg.src = "./card_back_img.png";
     backImg.alt = "Card Back";
     cardBack.appendChild(backImg);
-
+    
     const cardFront = document.createElement("div");
     cardFront.classList.add("card-face", "card-front");
     const frontImg = document.createElement("img");
     frontImg.src = cardImageUrl;
     frontImg.alt = `${rarityName} Card`;
     cardFront.appendChild(frontImg);
-
+    
     const rarityText = document.createElement("div");
     rarityText.classList.add("rarity-text");
     rarityText.textContent = rarityName;
     cardFront.appendChild(rarityText);
-
+    
     cardInner.appendChild(cardBack);
     cardInner.appendChild(cardFront);
     card.appendChild(cardInner);
-
+    
     card.addEventListener("click", () => {
       card.classList.toggle("flipped");
       if (card.classList.contains("flipped")) {
-        card.style.zIndex = 10000;
+        this.topZIndex++;
+        card.style.zIndex = this.topZIndex;
       } else {
         card.style.zIndex = "";
       }
     });
+    
     this.cardContainer.appendChild(card);
   }
 }
