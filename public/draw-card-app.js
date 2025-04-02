@@ -25,8 +25,6 @@ class DrawCardApp extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    // 用來動態提升 z-index 的基準
-    this.topZIndex = 1000;
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -60,8 +58,6 @@ class DrawCardApp extends HTMLElement {
         }
         .btn-container {
           margin-bottom: 20px;
-          position: relative;
-          z-index: 1;
         }
         button {
           width: 150px;
@@ -78,56 +74,43 @@ class DrawCardApp extends HTMLElement {
           transform: scale(1.05);
           box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
         }
-        /* 在容器上使用 perspective，避免 .card 自身 transform 干擾 stacking */
         #card-container {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
-          position: relative;
-          z-index: 2;
-          perspective: 1000px;
         }
         .card {
-          width: 184px;
-          height: 256px;
+          width: 200px;
+          aspect-ratio: 63 / 88;
+          position: relative;
+          perspective: 800px;
           margin: 10px;
           cursor: pointer;
-          list-style: none;
-          padding: 0;
-          background: transparent;
-          border-radius: 10px;
-          box-sizing: border-box;
-          position: relative;
-          overflow: visible;
+          transition: all 0.3s;
         }
         .card-inner {
           width: 100%;
           height: 100%;
-          position: relative;
-          transform-style: preserve-3d;
+          position: absolute;
+          top: 0;
+          left: 0;
           transition: transform 0.6s;
-          will-change: transform;
+          transform-style: preserve-3d;
         }
-        /* 卡片翻開 (rotateY) */
         .card.flipped .card-inner {
           transform: rotateY(180deg);
         }
-        /* 桌面環境下 hover 浮起放大 (僅在翻開後) */
-        .card.flipped:hover .card-inner {
-          transform: rotateY(180deg) translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
-          box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5);
-        }
         .card-face {
           position: absolute;
+          top: 0;
+          left: 0;
           width: 100%;
           height: 100%;
           backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
+          overflow: hidden;
           display: flex;
           justify-content: center;
           align-items: center;
-          top: 0;
-          left: 0;
         }
         .card-face img {
           width: 100%;
@@ -135,29 +118,21 @@ class DrawCardApp extends HTMLElement {
           object-fit: contain;
         }
         .card-back {
-          background: linear-gradient(to right bottom, #eee 8%, #ddd 18%, #eee 33%);
+          background: #fff;
         }
         .card-front {
           transform: rotateY(180deg);
-          background: #fff;
         }
         .rarity-text {
           position: absolute;
           bottom: 5px;
           left: 50%;
           transform: translateX(-50%);
-          background-color: rgba(255,255,255,0.8);
+          background-color: rgba(255,255,255,0.7);
           padding: 3px 8px;
           border-radius: 6px;
           font-weight: bold;
           font-size: 16px;
-        }
-        @keyframes flash {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.5); }
-        }
-        .card.flipped.flash .card-inner {
-          animation: flash 1s infinite;
         }
       </style>
       <div class="app">
@@ -223,7 +198,8 @@ class DrawCardApp extends HTMLElement {
     });
 
     this.raritySliders.addEventListener("rarity-updated", (e) => {
-      this.rarityList = e.detail;
+      const updated = e.detail;
+      this.rarityList = updated;
     });
   }
 
@@ -263,18 +239,6 @@ class DrawCardApp extends HTMLElement {
         r.prob = 0;
       }
     });
-  }
-
-  getRarityByProb() {
-    const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
-    if (totalProb <= 0) return null;
-    const rand = Math.floor(Math.random() * totalProb) + 1;
-    let cumulative = 0;
-    for (const r of this.rarityList) {
-      cumulative += r.prob;
-      if (rand <= cumulative) return r.name;
-    }
-    return null;
   }
 
   drawOne() {
@@ -327,50 +291,45 @@ class DrawCardApp extends HTMLElement {
     }
   }
 
+  getRarityByProb() {
+    const totalProb = this.rarityList.reduce((sum, r) => sum + r.prob, 0);
+    if (totalProb <= 0) return null;
+    const rand = Math.floor(Math.random() * totalProb) + 1;
+    let cumulative = 0;
+    for (const r of this.rarityList) {
+      cumulative += r.prob;
+      if (rand <= cumulative) return r.name;
+    }
+    return null;
+  }
+
   createCard(rarityName, cardImageUrl) {
     const card = document.createElement("div");
     card.classList.add("card");
-    if (rarityName === "SSR") {
-      card.classList.add("flash");
-    }
-
     const cardInner = document.createElement("div");
     cardInner.classList.add("card-inner");
-
     const cardBack = document.createElement("div");
     cardBack.classList.add("card-face", "card-back");
     const backImg = document.createElement("img");
     backImg.src = "./card_back_img.png";
     backImg.alt = "Card Back";
     cardBack.appendChild(backImg);
-
     const cardFront = document.createElement("div");
     cardFront.classList.add("card-face", "card-front");
     const frontImg = document.createElement("img");
     frontImg.src = cardImageUrl;
     frontImg.alt = `${rarityName} Card`;
     cardFront.appendChild(frontImg);
-
     const rarityText = document.createElement("div");
     rarityText.classList.add("rarity-text");
     rarityText.textContent = rarityName;
     cardFront.appendChild(rarityText);
-
     cardInner.appendChild(cardBack);
     cardInner.appendChild(cardFront);
     card.appendChild(cardInner);
-
     card.addEventListener("click", () => {
       card.classList.toggle("flipped");
-      if (card.classList.contains("flipped")) {
-        this.topZIndex++;
-        card.style.zIndex = this.topZIndex;
-        card.offsetWidth;
-      } else {
-        card.style.zIndex = "";
-      }
     });
-
     this.cardContainer.appendChild(card);
   }
 }
