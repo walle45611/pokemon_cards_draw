@@ -77,12 +77,14 @@ class DrawCardApp extends HTMLElement {
           transform: scale(1.05);
           box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
         }
+        /* 將 perspective 移到卡片容器上 */
         #card-container {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
           position: relative;
           z-index: 2;
+          perspective: 1000px;
         }
         .card {
           width: 184px;
@@ -94,13 +96,16 @@ class DrawCardApp extends HTMLElement {
           background: transparent;
           border-radius: 10px;
           box-sizing: border-box;
+          /* 刪除這裡的 perspective */
           transform-style: preserve-3d;
-          perspective: 1000px;
           position: relative;
           overflow: hidden;
           transition: transform 0.4s ease, box-shadow 0.4s ease;
+          /* 強制硬體加速 */
+          -webkit-transform: translateZ(0);
+          transform: translateZ(0);
         }
-        /* 桌面環境下的 hover 浮動效果 */
+        /* 桌面環境下滑鼠 hover 浮動效果 */
         .card.flipped:hover {
           transform: translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
           box-shadow: 0 25px 40px rgba(0,0,0,0.5);
@@ -133,6 +138,7 @@ class DrawCardApp extends HTMLElement {
           height: 100%;
           object-fit: contain;
         }
+        /* 卡背背景 */
         .card-back {
           background: linear-gradient(to right bottom, #eee 8%, #ddd 18%, #eee 33%);
         }
@@ -152,12 +158,8 @@ class DrawCardApp extends HTMLElement {
           font-size: 16px;
         }
         @keyframes flash {
-          0%, 100% {
-            filter: brightness(1);
-          }
-          50% {
-            filter: brightness(1.5);
-          }
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.5); }
         }
         .card.flipped.flash {
           animation: flash 1s infinite;
@@ -235,9 +237,7 @@ class DrawCardApp extends HTMLElement {
   }
 
   clearProbabilities() {
-    this.rarityList.forEach(r => {
-      r.prob = 0;
-    });
+    this.rarityList.forEach(r => { r.prob = 0; });
   }
 
   randomizeProbabilities() {
@@ -331,40 +331,41 @@ class DrawCardApp extends HTMLElement {
     }
     const cardInner = document.createElement("div");
     cardInner.classList.add("card-inner");
-    
+
     const cardBack = document.createElement("div");
     cardBack.classList.add("card-face", "card-back");
     const backImg = document.createElement("img");
     backImg.src = "./card_back_img.png";
     backImg.alt = "Card Back";
     cardBack.appendChild(backImg);
-    
+
     const cardFront = document.createElement("div");
     cardFront.classList.add("card-face", "card-front");
     const frontImg = document.createElement("img");
     frontImg.src = cardImageUrl;
     frontImg.alt = `${rarityName} Card`;
     cardFront.appendChild(frontImg);
-    
+
     const rarityText = document.createElement("div");
     rarityText.classList.add("rarity-text");
     rarityText.textContent = rarityName;
     cardFront.appendChild(rarityText);
-    
+
     cardInner.appendChild(cardBack);
     cardInner.appendChild(cardFront);
     card.appendChild(cardInner);
-    
+
     card.addEventListener("click", () => {
       card.classList.toggle("flipped");
       if (card.classList.contains("flipped")) {
         this.topZIndex++;
         card.style.zIndex = this.topZIndex;
+        card.offsetHeight;
       } else {
         card.style.zIndex = "";
       }
     });
-    
+
     this.cardContainer.appendChild(card);
   }
 }
