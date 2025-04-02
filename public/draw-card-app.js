@@ -25,6 +25,7 @@ class DrawCardApp extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    // 用來動態提升 z-index 的基準
     this.topZIndex = 1000;
     this.shadowRoot.innerHTML = `
       <style>
@@ -77,7 +78,7 @@ class DrawCardApp extends HTMLElement {
           transform: scale(1.05);
           box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
         }
-        /* 將 perspective 移到卡片容器上 */
+        /* 在容器上使用 perspective，避免 .card 自身 transform 干擾 stacking */
         #card-container {
           display: flex;
           flex-wrap: wrap;
@@ -96,32 +97,25 @@ class DrawCardApp extends HTMLElement {
           background: transparent;
           border-radius: 10px;
           box-sizing: border-box;
-          /* 刪除這裡的 perspective */
-          transform-style: preserve-3d;
           position: relative;
-          overflow: hidden;
-          transition: transform 0.4s ease, box-shadow 0.4s ease;
-          /* 強制硬體加速 */
-          -webkit-transform: translateZ(0);
-          transform: translateZ(0);
-        }
-        /* 桌面環境下滑鼠 hover 浮動效果 */
-        .card.flipped:hover {
-          transform: translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
-          box-shadow: 0 25px 40px rgba(0,0,0,0.5);
+          overflow: visible;
         }
         .card-inner {
           width: 100%;
           height: 100%;
-          position: absolute;
-          top: 0;
-          left: 0;
-          transition: transform 0.6s;
+          position: relative;
           transform-style: preserve-3d;
+          transition: transform 0.6s;
           will-change: transform;
         }
+        /* 卡片翻開 (rotateY) */
         .card.flipped .card-inner {
           transform: rotateY(180deg);
+        }
+        /* 桌面環境下 hover 浮起放大 (僅在翻開後) */
+        .card.flipped:hover .card-inner {
+          transform: rotateY(180deg) translateY(-20px) rotateX(5deg) rotateY(5deg) scale(1.4);
+          box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5);
         }
         .card-face {
           position: absolute;
@@ -132,13 +126,14 @@ class DrawCardApp extends HTMLElement {
           display: flex;
           justify-content: center;
           align-items: center;
+          top: 0;
+          left: 0;
         }
         .card-face img {
           width: 100%;
           height: 100%;
           object-fit: contain;
         }
-        /* 卡背背景 */
         .card-back {
           background: linear-gradient(to right bottom, #eee 8%, #ddd 18%, #eee 33%);
         }
@@ -161,14 +156,14 @@ class DrawCardApp extends HTMLElement {
           0%, 100% { filter: brightness(1); }
           50% { filter: brightness(1.5); }
         }
-        .card.flipped.flash {
+        .card.flipped.flash .card-inner {
           animation: flash 1s infinite;
         }
       </style>
       <div class="app">
         <h1>抽卡練習所</h1>
         <p class="intro-text">
-          抽卡練習所：給抽不到 SSR 的人一點慰藉（笑）<br/>
+          抽卡練習所：給抽不到 SSR 的人一點慰藉（笑）<br />
           部落格連結：
           <a href="https://blog.walle4561.com/" target="_blank">https://blog.walle4561.com/</a>
         </p>
@@ -237,11 +232,13 @@ class DrawCardApp extends HTMLElement {
   }
 
   clearProbabilities() {
-    this.rarityList.forEach(r => { r.prob = 0; });
+    this.rarityList.forEach((r) => {
+      r.prob = 0;
+    });
   }
 
   randomizeProbabilities() {
-    const eligible = this.rarityList.filter(r => {
+    const eligible = this.rarityList.filter((r) => {
       return this.cardData[r.name] && this.cardData[r.name].length >= 10;
     });
     if (eligible.length === 0) {
@@ -256,10 +253,12 @@ class DrawCardApp extends HTMLElement {
     cuts.push(0);
     cuts.push(100);
     cuts.sort((a, b) => a - b);
-    this.rarityList.forEach(r => {
+
+    this.rarityList.forEach((r) => {
       if (this.cardData[r.name] && this.cardData[r.name].length >= 10) {
         const index = eligible.indexOf(r);
-        r.prob = cuts[index + 1] - cuts[index];
+        let prob = cuts[index + 1] - cuts[index];
+        r.prob = prob;
       } else {
         r.prob = 0;
       }
@@ -304,6 +303,7 @@ class DrawCardApp extends HTMLElement {
     }
     const tempData = JSON.parse(JSON.stringify(this.cardData));
     let emptyPoolAlertShown = false;
+
     for (let i = 0; i < 10; i++) {
       setTimeout(() => {
         const rarityName = this.getRarityByProb();
@@ -312,7 +312,11 @@ class DrawCardApp extends HTMLElement {
         if (!cardPool || cardPool.length === 0) {
           if (!emptyPoolAlertShown) {
             emptyPoolAlertShown = true;
-            alert(`「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${i + 1} 張。`);
+            alert(
+              `「${rarityName}」卡池已經沒有可抽的卡了，無法抽到第 ${
+                i + 1
+              } 張。`
+            );
           }
           return;
         }
@@ -329,6 +333,7 @@ class DrawCardApp extends HTMLElement {
     if (rarityName === "SSR") {
       card.classList.add("flash");
     }
+
     const cardInner = document.createElement("div");
     cardInner.classList.add("card-inner");
 
@@ -360,7 +365,7 @@ class DrawCardApp extends HTMLElement {
       if (card.classList.contains("flipped")) {
         this.topZIndex++;
         card.style.zIndex = this.topZIndex;
-        card.offsetHeight;
+        card.offsetWidth;
       } else {
         card.style.zIndex = "";
       }
