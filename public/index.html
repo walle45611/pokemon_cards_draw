@@ -1,10 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-TW">
   <head>
     <meta charset="utf-8" />
     <title>抽卡練習所</title>
   </head>
   <body>
+    <!-- 簡短說明 -->
+    <div
+      style="
+        font-family: 'Microsoft JhengHei', sans-serif;
+        background: #f5f5f5;
+        padding: 10px 20px;
+        margin: 20px auto;
+        max-width: 800px;
+        border-radius: 6px;
+        color: #333;
+      "
+    >
+      <p style="margin: 0.5em 0">
+        • <strong>稀有度陣列</strong>（this.rarityList）： [{ id, name, prob
+        }]，用來對應滑桿與機率分配
+      </p>
+      <p style="margin: 0.5em 0">
+        • <strong>卡片資料</strong>（this.cardData）： 從
+        <code>pokemon_cards.json</code> 載入，格式為 { SSR: [url,…], R: […], … }
+      </p>
+      <p style="margin: 0.5em 0">
+        • <strong>資料來源</strong>： 以 Python 爬蟲抓取官方卡牌網站並分類後輸出
+        JSON
+      </p>
+    </div>
+
     <draw-card-app></draw-card-app>
 
     <script type="module" src="rarity-sliders.js"></script>
